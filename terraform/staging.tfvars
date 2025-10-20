@@ -1,0 +1,10 @@
+project_id      = "ecommerce-platform-475712"
+project_name    = "ecommerce-platform"
+region          = "asia-south1"
+zone            = "asia-south1-a"
+gke_num_nodes   = 3
+gke_machine_type = "e2-standard-2"
+db_tier         = "db-g1-small"
+db_password     = "db_password" # In production, use a more secure method
+redis_tier      = "STANDARD_HA"
+redis_memory_size_gb = 1
