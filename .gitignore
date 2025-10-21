@@ -28,8 +28,8 @@ go.work.sum
 .env
 
 # Terraform files
-.terraform.tfstate
-.terraform.tfstate.*
+terraform.tfstate
+terraform.tfstate.*
 .terraform/
 .terraform.lock.hcl
 
