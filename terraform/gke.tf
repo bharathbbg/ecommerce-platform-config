@@ -3,18 +3,17 @@ resource "google_container_cluster" "primary" {
   name     = "${var.project_name}-gke"
   location = var.region
 
-  # We can't create a cluster with no node pool defined, but we want to only use
-  # separately managed node pools. So we create the smallest possible default
-  # node pool and immediately delete it.
   remove_default_node_pool = true
   initial_node_count       = 1
 
+  deletion_protection = false
+
   network    = google_compute_network.vpc.name
-  subnetwork = google_compute_subnetwork.subnet.name
+  subnetwork = google_compute_subnetwork.gke_subnet.name  # Changed from subnet to gke_subnet
 
   ip_allocation_policy {
-    cluster_secondary_range_name  = "pods"
-    services_secondary_range_name = "services"
+    cluster_secondary_range_name  = "gke-pods"      # Match the name in network.tf
+    services_secondary_range_name = "gke-services"  # Match the name in network.tf
   }
 
   private_cluster_config {
@@ -23,7 +22,6 @@ resource "google_container_cluster" "primary" {
     master_ipv4_cidr_block  = "172.16.0.0/28"
   }
 
-  # Enable Workload Identity
   workload_identity_config {
     workload_pool = "${var.project_id}.svc.id.goog"
   }
@@ -36,6 +34,14 @@ resource "google_container_node_pool" "primary_nodes" {
   node_count = var.gke_num_nodes
 
   node_config {
+    preemptible  = true
+    machine_type = var.gke_machine_type
+
+    # REDUCE THIS VALUE - Currently requesting 900GB total (3 nodes × 300GB each)
+    # Change to 100GB per node = 300GB total (well within 500GB quota)
+    disk_size_gb = 100  # Change from 300 to 100
+    disk_type    = "pd-standard"  # Or change from "pd-ssd" to "pd-standard"
+
     oauth_scopes = [
       "https://www.googleapis.com/auth/logging.write",
       "https://www.googleapis.com/auth/monitoring",
@@ -46,8 +52,6 @@ resource "google_container_node_pool" "primary_nodes" {
       env = var.project_id
     }
 
-    machine_type = var.gke_machine_type
-    tags         = ["gke-node", "${var.project_name}-gke"]
     metadata = {
       disable-legacy-endpoints = "true"
     }

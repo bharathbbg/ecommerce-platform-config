@@ -19,6 +19,8 @@ resource "google_sql_database_instance" "postgres" {
   }
 
   deletion_protection = false  # Set to true for production
+  depends_on = [google_service_networking_connection.private_vpc_connection]
+
 }
 
 # Create order database
@@ -62,11 +64,20 @@ resource "google_sql_user" "inventory_user" {
 
 # Redis instance
 resource "google_redis_instance" "cache" {
-  name           = "${var.project_name}-redis"
-  tier           = var.redis_tier
-  memory_size_gb = var.redis_memory_size_gb
+  name           = "ecommerce-platform-redis"
+  tier           = "BASIC"
+  memory_size_gb = 1
   region         = var.region
-  
+
   authorized_network = google_compute_network.vpc.id
   connect_mode       = "PRIVATE_SERVICE_ACCESS"
+
+  redis_version = "REDIS_7_0"
+
+  display_name = "Ecommerce Platform Redis Cache"
+
+  depends_on = [
+    google_service_networking_connection.private_vpc_connection,
+    google_project_service.redis
+  ]
 }

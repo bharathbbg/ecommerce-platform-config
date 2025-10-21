@@ -9,32 +9,34 @@ resource "google_compute_instance" "mongodb" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-10"
+      image = "debian-cloud/debian-12"
       size  = 50
     }
   }
 
   network_interface {
     network    = google_compute_network.vpc.id
-    subnetwork = google_compute_subnetwork.subnet.id
+    subnetwork = google_compute_subnetwork.app_subnet.id  # Changed from subnet to app_subnet
   }
 
   metadata_startup_script = <<-EOF
     #!/bin/bash
     apt-get update
-    apt-get install -y gnupg
-    wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | apt-key add -
-    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/debian buster/mongodb-org/4.4 main" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
+    apt-get install -y gnupg curl
+    curl -fsSL https://pgp.mongodb.com/server-7.0.asc | gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
+    echo "deb [ signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
     apt-get update
     apt-get install -y mongodb-org
     systemctl start mongod
     systemctl enable mongod
     
-    # Create inventory database
-    mongo --eval 'db = db.getSiblingDB("inventory_db"); db.createUser({user: "inventory_user", pwd: "${var.db_password}", roles: [{role: "readWrite", db: "inventory_db"}]})'
+    # Wait for MongoDB to start
+    sleep 10
+    
+    # Create inventory database and user
+    mongosh --eval 'use inventory_db; db.createUser({user: "inventory_user", pwd: "${var.db_password}", roles: [{role: "readWrite", db: "inventory_db"}]})'
   EOF
 
-  # In production, use proper security measures
   tags = ["mongodb"]
 
   service_account {
@@ -52,6 +54,6 @@ resource "google_compute_firewall" "mongodb" {
     ports    = ["27017"]
   }
 
-  source_ranges = [google_compute_subnetwork.subnet.ip_cidr_range]
+  source_ranges = [google_compute_subnetwork.app_subnet.ip_cidr_range]  # Changed from subnet to app_subnet
   target_tags   = ["mongodb"]
 }

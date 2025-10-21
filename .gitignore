@@ -27,6 +27,12 @@ go.work.sum
 # env file
 .env
 
+# Terraform files
+.terraform.tfstate
+.terraform.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
 # Editor/IDE
 # .idea/
 # .vscode/
